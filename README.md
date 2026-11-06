@@ -29,8 +29,8 @@ Do all four before the first day of the event. Nothing runs until they are done.
 3. **Claude scheduled tasks** (cloud, not local device), one set per event:
    - one-off "watcher start <day>" per race day at that day's `start`, prompt: dispatch `tick.yml` on main here and
      confirm a tick and a watcher run appear; push and email on.
-   - "watcher watchdog": hourly at :17 across the race days' hours, prompt as for Sandown (copy it from the Sandown
-     task in the scheduled tasks list); push and email on.
+   - "watcher watchdog": hourly at :17 across the race days' hours; push and email on.
+   Exact names, schedules and prompts: `scheduled-tasks/README.md`, `start_prompt.md`, `watchdog_prompt.md`.
 4. **Test the night before**: dispatch `tick.yml` with `test_window` set to a few minutes from now
    (start,fast_until,slow_until), `test_fast_s` 60, `test_slow_s` 120. Check: a watcher run starts each tick,
    the gap switches to 120 s, the chain stops at slow_until. Then fire the watchdog once with no ticker running
