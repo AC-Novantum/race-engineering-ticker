@@ -17,8 +17,8 @@
   "2026-11-06": {
    "why": "TEST ONLY (watchdog test 6 Nov night), remove after",
    "start": "22:45",
-   "fast_until": "23:00",
-   "slow_until": "23:05"
+   "fast_until": "23:15",
+   "slow_until": "23:25"
   }
  },
  "fast_s": 600,
