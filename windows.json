@@ -1,0 +1,10 @@
+{
+  "about": "When the ticker starts the Sportity watcher in race-engineering-runner. Melbourne times. From VU-RE shared SANDOWN_SCHEDULE.md (Andrew 6 Nov 2026 21:44: 10 min from 1 h before the first session to 2 h after the last session ends, then 30 min for 2 h, then stop).",
+  "timezone": "Australia/Melbourne",
+  "days": {
+    "2026-11-07": {"why": "Sandown Sat: first 08:30 PSC Race 2, last Supercars Race 33 ends about 17:25", "start": "07:30", "fast_until": "19:30", "slow_until": "21:30"},
+    "2026-11-08": {"why": "Sandown Sun: first 09:25 Trans Am Race 2, last Supercars Race 34 ends about 17:25", "start": "08:25", "fast_until": "19:30", "slow_until": "21:30"}
+  },
+  "fast_s": 600,
+  "slow_s": 1800
+}

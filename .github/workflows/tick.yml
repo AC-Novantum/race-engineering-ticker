@@ -1,0 +1,69 @@
+# Ticker: starts the Sportity watcher (watcher.yml in AC-Novantum/race-engineering-runner) on a timetable, then starts
+# itself again. Public repo, so its waiting costs no Actions minutes; the private repo pays only for each check.
+# Why: GitHub's own timer fired 2 of ~170 watcher slots at Sandown on Fri 6 Nov 2026 (Andrew 6 Nov 21:44).
+# Timetable: windows.json. Key: secret RUNNER_DISPATCH (fine-grained, race-engineering-runner only, Actions read/write,
+# expires 6 Nov 2027). Holds no data, documents or results.
+name: tick
+on:
+  workflow_dispatch:
+    inputs:
+      test_window:
+        description: "Test only: start,fast_until,slow_until (HH:MM Melbourne, today). Empty = windows.json"
+        default: ""
+      test_fast_s:
+        default: "60"
+      test_slow_s:
+        default: "120"
+      watcher_ref:
+        description: "Branch of race-engineering-runner to run the watcher from"
+        default: "main"
+concurrency:
+  group: tick
+  cancel-in-progress: false
+permissions:
+  actions: write   # to start the next tick
+  contents: read
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Start time
+        run: echo "T0=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+      - name: Decide
+        id: d
+        env:
+          TEST_WINDOW: ${{ inputs.test_window }}
+          TEST_FAST_S: ${{ inputs.test_fast_s }}
+          TEST_SLOW_S: ${{ inputs.test_slow_s }}
+        run: |
+          r=$(python3 tick.py); echo "$r"
+          echo "action=${r%% *}" >> "$GITHUB_OUTPUT"
+          [ "${r%% *}" = go ] && echo "gap=${r#go }" >> "$GITHUB_OUTPUT" || true
+      - name: Start the watcher
+        if: steps.d.outputs.action == 'go'
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_DISPATCH }}
+        run: |
+          for i in $(seq 1 10); do
+            gh api -X POST repos/AC-Novantum/race-engineering-runner/actions/workflows/watcher.yml/dispatches \
+              -f ref="${{ inputs.watcher_ref || 'main' }}" && { echo "watcher started"; exit 0; }
+            sleep 30
+          done
+          echo "COULD NOT START THE WATCHER"; exit 1
+      - name: Next tick
+        if: always() && steps.d.outputs.action == 'go'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GAP: ${{ steps.d.outputs.gap }}
+        run: |
+          wait=$(( T0 + GAP - $(date +%s) )); if [ $wait -gt 0 ]; then echo "waiting $wait s"; sleep $wait; fi
+          for i in $(seq 1 10); do
+            gh api -X POST "repos/${{ github.repository }}/actions/workflows/tick.yml/dispatches" -f ref="${{ github.ref_name }}" \
+              -f "inputs[test_window]=${{ inputs.test_window }}" -f "inputs[test_fast_s]=${{ inputs.test_fast_s || '60' }}" \
+              -f "inputs[test_slow_s]=${{ inputs.test_slow_s || '120' }}" -f "inputs[watcher_ref]=${{ inputs.watcher_ref || 'main' }}" \
+              && { echo "next tick started"; exit 0; }
+            sleep 30
+          done
+          echo "COULD NOT START THE NEXT TICK"; exit 1
