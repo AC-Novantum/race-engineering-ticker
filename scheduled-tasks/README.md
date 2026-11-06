@@ -22,6 +22,10 @@ Times are the circuit's local time zone (Melbourne for Sandown); use the same ti
   fire the watchdog task once (fire_trigger). Expect "WATCHER RESTARTED", a new tick run, and the alert on
   Andrew's phone and email. Then remove the test day from windows.json.
 
+Note: a fire_trigger text note can't change the thresholds (the task treats it as data, correctly). To test the
+restart, leave the ticker idle more than 15 minutes inside the test window, then fire the task with no text.
+Tested 6 Nov 2026 22:34 Adelaide: restarted the ticker, the tick started the watcher, alert sent.
+
 ## 4. After the event
 Disable or delete the event's tasks (they would otherwise sit in the list; the dates in the cron stop them firing).
 Sandown 2026 task ids: watchdog trig_01KLxfv3BkC5KPNWBNKt7av9, Sat start trig_01C1isY3BiWHdz8ep4Sdp4i8,
