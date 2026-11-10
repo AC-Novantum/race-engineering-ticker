@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       test_window:
-        description: "Test only: start,fast_until,slow_until (HH:MM Melbourne, today). Empty = windows.json"
+        description: "Test only: start,fast_until,slow_until (HH:MM in the windows.json time zone, today). Empty = windows.json"
         default: ""
       test_fast_s:
         default: "60"
