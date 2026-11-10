@@ -1,5 +1,6 @@
 {
- "about": "When the ticker starts the Sportity watcher in race-engineering-runner. Adelaide times. Rule (Andrew 6 Nov 2026 21:44): 10 min from 1 h before the first session to 2 h after the last session ends, then 30 min for 2 h, then stop. ADELAIDE 500: the program times were not confirmed when this was written (11 Nov 2026), so each day uses a WIDE window (06:00 to 23:00) that covers any timetable; tighten start and fast_until from the program to save Actions minutes.",
+ "about": "FALLBACK ONLY since 11 Nov 2026. The ticker reads the site's list (tick.py, WATCH_WINDOWS_URL) and needs no setting per event. This file is used when the site cannot be read, or lists nothing on a day this file lists (then the run is red). Times are in `timezone`; `event` is the slug the watcher is started for. Wide Adelaide 500 days (06:00 to 23:00) set 11 Nov 2026 before the program was confirmed.",
+ "event": "2026-adelaide",
  "timezone": "Australia/Adelaide",
  "days": {
   "2026-11-26": {

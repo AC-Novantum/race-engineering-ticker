@@ -1,5 +1,6 @@
-# Checks windows.json on every change and every Monday: red when the file is malformed or every day in it is past
-# (so an event that is coming up with no days set shows as a failed check, not as a silent ticker).
+# Checks tick.py, tick.yml and windows.json on every change and every Monday (test_tick.py: fake site answers, no
+# network): two events at once, ten at once, midnight, the clock-change days, no timetable, site down with and
+# without the fallback, the keep-alive, and that no secret but the dispatch key is used.
 name: check
 on:
   push:
