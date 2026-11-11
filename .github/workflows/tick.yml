@@ -1,69 +1,98 @@
-# Ticker: starts the Sportity watcher (watcher.yml in AC-Novantum/race-engineering-runner) on a timetable, then starts
-# itself again. Public repo, so its waiting costs no Actions minutes; the private repo pays only for each check.
-# Why: GitHub's own timer fired 2 of ~170 watcher slots at Sandown on Fri 6 Nov 2026 (Andrew 6 Nov 21:44).
-# Timetable: windows.json. Key: secret RUNNER_DISPATCH (fine-grained, race-engineering-runner only, Actions read/write,
-# expires 6 Nov 2027). Holds no data, documents or results.
+# Ticker: starts the official-documents watcher (watcher.yml in AC-Novantum/race-engineering-runner) once per open
+# event, then starts itself again. Public repo, so its waiting costs no Actions minutes; the private repo pays only
+# for each watcher run. Why: GitHub's own timer started the watcher 7 times in three days at Sandown.
+# When to run comes from the site's public list (tick.py): no setting per event. windows.json is the fallback.
+# Key: secret RUNNER_DISPATCH (fine-grained, race-engineering-runner only, Actions read/write, expires 6 Nov 2027).
+# Variable WATCH_WINDOWS_URL (optional): the list's address; unset = the production address in tick.py.
+# Holds no data, documents or results; nothing read from the site is written here.
 name: tick
 on:
   workflow_dispatch:
     inputs:
+      last_tick:
+        description: "Set by the chain: when the tick before this one ran (epoch seconds). Leave empty by hand"
+        default: ""
       test_window:
-        description: "Test only: start,fast_until,slow_until (HH:MM Melbourne, today). Empty = windows.json"
+        description: "Test only: start,fast_until,slow_until (HH:MM in the windows.json time zone, today). Empty = the site's list"
         default: ""
       test_fast_s:
         default: "60"
       test_slow_s:
         default: "120"
+      test_event:
+        description: "Test only: event slug the test window starts the watcher for (empty = the watcher's own choice)"
+        default: ""
       watcher_ref:
         description: "Branch of race-engineering-runner to run the watcher from"
         default: "main"
-concurrency:
-  group: tick
-  cancel-in-progress: false
+  schedule:
+    # Keep-alive, not the timer: each slot only checks that a chain is running and starts one if not (seconds, free).
+    # Many slots because GitHub drops scheduled runs; one that lands while a chain runs exits at once.
+    - cron: "7,37 * * * *"
 permissions:
-  actions: write   # to start the next tick
+  actions: write   # to start the next tick, and for the keep-alive to list and start runs
   contents: read
 jobs:
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Chain running?
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tick.py --keepalive
   tick:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    concurrency:
+      # a test run (test_window set) and the live chain never share a group, so a test the night before an event
+      # can neither queue behind the chain nor cancel its pending tick (Fable review of PR 1, 11 Nov)
+      group: tick-${{ inputs.test_window != '' && 'test' || 'chain' }}
+      cancel-in-progress: false
     steps:
       - name: Start time
         run: echo "T0=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
-      - name: Decide
+      - name: Decide and start the watcher
         id: d
         env:
+          WATCH_WINDOWS_URL: ${{ vars.WATCH_WINDOWS_URL }}
+          RUNNER_DISPATCH: ${{ secrets.RUNNER_DISPATCH }}
+          LAST_TICK: ${{ inputs.last_tick }}
+          WATCHER_REF: ${{ inputs.watcher_ref }}
           TEST_WINDOW: ${{ inputs.test_window }}
           TEST_FAST_S: ${{ inputs.test_fast_s }}
           TEST_SLOW_S: ${{ inputs.test_slow_s }}
-        run: |
-          r=$(python3 tick.py); echo "$r"
-          echo "action=${r%% *}" >> "$GITHUB_OUTPUT"
-          [ "${r%% *}" = go ] && echo "gap=${r#go }" >> "$GITHUB_OUTPUT" || true
-      - name: Start the watcher
-        if: steps.d.outputs.action == 'go'
-        env:
-          GH_TOKEN: ${{ secrets.RUNNER_DISPATCH }}
-        run: |
-          for i in $(seq 1 10); do
-            gh api -X POST repos/AC-Novantum/race-engineering-runner/actions/workflows/watcher.yml/dispatches \
-              -f ref="${{ inputs.watcher_ref || 'main' }}" && { echo "watcher started"; exit 0; }
-            sleep 30
-          done
-          echo "COULD NOT START THE WATCHER"; exit 1
+          TEST_EVENT: ${{ inputs.test_event }}
+        run: python3 tick.py --run
       - name: Next tick
-        if: always() && steps.d.outputs.action == 'go'
+        # also after a failed step above (a crash must not end the chain): then in 10 minutes
+        if: always() && steps.d.outputs.action != 'stop'
         env:
           GH_TOKEN: ${{ github.token }}
-          GAP: ${{ steps.d.outputs.gap }}
+          GAP: ${{ steps.d.outputs.gap || '600' }}
+          REF: ${{ github.ref_name }}
+          IN_TEST_WINDOW: ${{ inputs.test_window }}
+          IN_TEST_FAST_S: ${{ inputs.test_fast_s || '60' }}
+          IN_TEST_SLOW_S: ${{ inputs.test_slow_s || '120' }}
+          IN_TEST_EVENT: ${{ inputs.test_event }}
+          IN_WATCHER_REF: ${{ inputs.watcher_ref || 'main' }}
         run: |
           wait=$(( T0 + GAP - $(date +%s) )); if [ $wait -gt 0 ]; then echo "waiting $wait s"; sleep $wait; fi
           for i in $(seq 1 10); do
-            gh api -X POST "repos/${{ github.repository }}/actions/workflows/tick.yml/dispatches" -f ref="${{ github.ref_name }}" \
-              -f "inputs[test_window]=${{ inputs.test_window }}" -f "inputs[test_fast_s]=${{ inputs.test_fast_s || '60' }}" \
-              -f "inputs[test_slow_s]=${{ inputs.test_slow_s || '120' }}" -f "inputs[watcher_ref]=${{ inputs.watcher_ref || 'main' }}" \
+            gh api -X POST "repos/$GITHUB_REPOSITORY/actions/workflows/tick.yml/dispatches" -f ref="$REF" \
+              -f "inputs[last_tick]=$T0" -f "inputs[test_window]=$IN_TEST_WINDOW" -f "inputs[test_fast_s]=$IN_TEST_FAST_S" \
+              -f "inputs[test_slow_s]=$IN_TEST_SLOW_S" -f "inputs[test_event]=$IN_TEST_EVENT" -f "inputs[watcher_ref]=$IN_WATCHER_REF" \
               && { echo "next tick started"; exit 0; }
             sleep 30
           done
-          echo "COULD NOT START THE NEXT TICK"; exit 1
+          echo "::error::COULD NOT START THE NEXT TICK"; exit 1
+      - name: Alarm
+        # after the next tick is started, so a red run never ends the chain
+        if: always() && steps.d.outputs.red == 'yes'
+        run: |
+          echo "::error::ALARM: see the Decide step (no timetable, site not read, or a watcher that could not be started)"
+          exit 1

@@ -1,18 +1,31 @@
 {
- "about": "When the ticker starts the Sportity watcher in race-engineering-runner. Melbourne times. From VU-RE shared SANDOWN_SCHEDULE.md (Andrew 6 Nov 2026 21:44: 10 min from 1 h before the first session to 2 h after the last session ends, then 30 min for 2 h, then stop).",
- "timezone": "Australia/Melbourne",
+ "about": "FALLBACK ONLY since 11 Nov 2026. The ticker reads the site's list (tick.py, WATCH_WINDOWS_URL) and needs no setting per event. This file is used when the site cannot be read, or lists nothing on a day this file lists (then the run is red). Times are in `timezone`; `event` is the slug the watcher is started for. Wide Adelaide 500 days (06:00 to 23:00) set 11 Nov 2026 before the program was confirmed.",
+ "event": "2026-adelaide",
+ "timezone": "Australia/Adelaide",
  "days": {
-  "2026-11-07": {
-   "why": "Sandown Sat: first 08:30 PSC Race 2, last Supercars Race 33 ends about 17:25",
-   "start": "07:30",
-   "fast_until": "19:30",
-   "slow_until": "21:30"
+  "2026-11-26": {
+   "why": "Adelaide 500 Thu: wide default, program times not confirmed",
+   "start": "06:00",
+   "fast_until": "21:00",
+   "slow_until": "23:00"
   },
-  "2026-11-08": {
-   "why": "Sandown Sun: first 09:25 Trans Am Race 2, last Supercars Race 34 ends about 17:25",
-   "start": "08:25",
-   "fast_until": "19:30",
-   "slow_until": "21:30"
+  "2026-11-27": {
+   "why": "Adelaide 500 Fri: wide default, program times not confirmed",
+   "start": "06:00",
+   "fast_until": "21:00",
+   "slow_until": "23:00"
+  },
+  "2026-11-28": {
+   "why": "Adelaide 500 Sat: wide default, program times not confirmed",
+   "start": "06:00",
+   "fast_until": "21:00",
+   "slow_until": "23:00"
+  },
+  "2026-11-29": {
+   "why": "Adelaide 500 Sun: wide default, program times not confirmed",
+   "start": "06:00",
+   "fast_until": "21:00",
+   "slow_until": "23:00"
   }
  },
  "fast_s": 600,
