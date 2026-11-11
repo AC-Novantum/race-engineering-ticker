@@ -146,14 +146,14 @@ with tempfile.NamedTemporaryFile("w", suffix=".json") as f:
     f.write("{not json"); f.flush()
     check("broken fallback file reported", tick.read_all(now, "https://example.invalid/x", dead, f.name, sleep=lambda s: None)[3] is not None)
 
-# 8. starting the watcher: one failure does not stop the others; a watcher without the input yet (422)
+# 8. starting the watcher: one failure does not stop the others; a refused input (422) is red, never a blind start
 seq = iter([500, 500, 500, 204])
 lines, failed = tick.dispatch([{"event": "2026-a"}, {"event": "2026-b"}], lambda p, b: next(seq), sleep=lambda s: None)
 check("one fails, the other starts", (failed, lines[1]), (["2026-a"], "watcher started for 2026-b"))
 bodies = []
 def old_watcher(p, b): bodies.append(b); return 422 if "inputs" in b else 204
 lines, failed = tick.dispatch([{"event": "2026-a"}], old_watcher)
-check("422 with one event: started without the input, said", (failed, bodies[-1], "WITHOUT the event input" in lines[0]), ([], {"ref": "main"}, True))
+check("422 with one event: red, no start without the input", (failed, [b for b in bodies if "inputs" not in b], "COULD NOT START" in lines[0]), (["2026-a"], [], True))
 lines, failed = tick.dispatch([{"event": "2026-a"}, {"event": "2026-b"}], old_watcher)
 check("422 with two events: red, never one blind start for two", failed, ["2026-a", "2026-b"])
 calls, post = post_ok(); tick.dispatch([{"event": ""}], post); check("fallback with no slug: no input", calls[0][1], {"ref": "main"})
@@ -173,7 +173,8 @@ except SystemExit as e: check("start refused is red", "COULD NOT START" in str(e
 y = open(os.path.join(here, ".github/workflows/tick.yml")).read()
 check("schedule trigger", len(re.findall(r"^\s+- cron: ", y, re.M)) >= 1 and "schedule:" in y)
 check("keep-alive job outside the chain's group", bool(re.search(r"keepalive:\n\s+if: github.event_name == 'schedule'\n(?:(?!concurrency).)*?\n  tick:", y, re.S)))
-check("chain job in one group, never cancelled", bool(re.search(r"tick:\n\s+if: github.event_name == 'workflow_dispatch'.*?concurrency:\n\s+group: tick\n\s+cancel-in-progress: false", y, re.S)))
+check("chain job in one group, never cancelled", bool(re.search(r"tick:\n\s+if: github.event_name == 'workflow_dispatch'.*?concurrency:\n(?:\s+#.*\n)*\s+group: tick-\$\{\{ inputs.test_window != '' && 'test' \|\| 'chain' \}\}\n\s+cancel-in-progress: false", y, re.S)))
+check("a test run never shares the live chain's group", "group: tick\n" not in y and "'test' || 'chain'" in y)
 check("only the dispatch key", sorted(set(re.findall(r"secrets\.([A-Za-z_]+)", y))), ["RUNNER_DISPATCH"])
 check("read-only checkout", "contents: read" in y and "contents: write" not in y)
 check("no input pasted into a shell line", re.findall(r"^\s+(?:gh|python3|echo|wait|for|sleep) .*\$\{\{", y, re.M), [])

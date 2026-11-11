@@ -48,7 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     concurrency:
-      group: tick
+      # a test run (test_window set) and the live chain never share a group, so a test the night before an event
+      # can neither queue behind the chain nor cancel its pending tick (Fable review of PR 1, 11 Nov)
+      group: tick-${{ inputs.test_window != '' && 'test' || 'chain' }}
       cancel-in-progress: false
     steps:
       - name: Start time

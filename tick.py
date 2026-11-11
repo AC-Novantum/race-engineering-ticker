@@ -224,8 +224,8 @@ def _github_post(path, body, token):
 
 def dispatch(due, post, ref="main", tries=3, sleep=time.sleep):
     """Start watcher.yml once per due event, with the event slug as the `event` input. Returns (lines, failures).
-    post(path, body) -> HTTP status. One event failing does not stop the others. A watcher that does not take the
-    input yet (HTTP 422) is started with no input when exactly one event is due, and that is said."""
+    post(path, body) -> HTTP status. One event failing does not stop the others. HTTP 422 (the watcher refused the
+    input) is a failure and the run goes red: a start without the event input could watch the wrong event."""
     lines, failed = [], []
     path = f"repos/{RUNNER}/actions/workflows/watcher.yml/dispatches"
     for o in due[:MAX_EVENTS]:
@@ -236,9 +236,6 @@ def dispatch(due, post, ref="main", tries=3, sleep=time.sleep):
             st = post(path, body)
             if st == 204 or st == 422: break
             if i + 1 < tries: sleep(10)
-        if st == 422 and o["event"] and len(due) == 1:
-            st = post(path, {"ref": ref})
-            if st == 204: lines.append(f"watcher started for {name} WITHOUT the event input (the watcher on {ref} does not take it yet)"); continue
         if st == 204: lines.append(f"watcher started for {name}")
         else: failed.append(name); lines.append(f"COULD NOT START THE WATCHER for {name} (HTTP {st})")
     return lines, failed
